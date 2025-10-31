@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Link from "next/link";
+import AuthNavButton from "@/components/AuthNavButton";
 
 export const metadata: Metadata = {
   title: "Pursiseura Sindbad ry",
@@ -44,12 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   </Link>
                 ))}
               {/* UUSI: erillinen nappi */}
-              <Link
-                href="/login"
-                className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-slate-300 hover:text-slate-900"
-              >
-                Kirjaudu
-              </Link>
+              <AuthNavButton />
             </nav>
 
             {/* mobile */}
