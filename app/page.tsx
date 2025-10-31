@@ -1,6 +1,7 @@
 // app/page.tsx
 import Link from "next/link";
 import { getSiteSettings } from "@/lib/siteSettings";
+export const dynamic = "force-dynamic";
 
 const features = [
   {
