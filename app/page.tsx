@@ -27,22 +27,20 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-16">
-      {/* HERO merellisellä taustalla */}
-      <section className="relative overflow-hidden rounded-3xl ocean-bg px-6 py-16 text-white md:px-10">
-        {/* kevyt tummennus että teksti erottuu */}
-        <div className="absolute inset-0 bg-slate-950/25" aria-hidden />
+      {/* HERO merellisellä, animoidulla taustalla */}
+      <section className="relative wave-container overflow-hidden rounded-3xl ocean-bg-solid px-6 py-16 text-white md:px-10">
         <div className="mx-auto flex max-w-5xl flex-col gap-10 md:flex-row md:items-center">
-          <div className="relative z-10 flex-1 space-y-6">
-            <p className="text-xs uppercase tracking-[0.35em] text-sky-100/80">
+          {/* vasen puoli */}
+          <div className="relative z-10 flex-1 space-y-6 drop-shadow-md">
+            <p className="text-xs uppercase tracking-[0.35em] text-sky-50/90">
               Pursiseura Sindbad ry
             </p>
             <h1 className="text-4xl font-semibold leading-tight md:text-5xl">
-              Meri, yhteisö ja hyvä satama{" "}
-              <span className="text-sky-50/95">Lauttasaaressa.</span>
+              Merellinen pursiseura
+              <span className="block text-sky-50/90">Lauttasaaressa.</span>
             </h1>
-            <p className="max-w-xl text-sky-50/80">
-              Sindbad on Lauttasaaren itärannalla toimiva pursiseura. Sivuilta löydät ajantasaiset
-              tiedot satamasta, laituripaikoista, tapahtumista ja jäsenyydestä.
+            <p className="max-w-xl text-sky-50/85">
+              Ajantasaiset tiedot satamasta, laituripaikoista, tapahtumista ja jäsenyydestä.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link
@@ -53,12 +51,12 @@ export default async function HomePage() {
               </Link>
               <Link
                 href="/yhteystiedot"
-                className="rounded-xl border border-white/30 bg-white/5 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-white/10"
+                className="rounded-xl border border-white/40 bg-sky-950/10 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-sky-950/20"
               >
                 Ota yhteyttä
               </Link>
             </div>
-            <p className="text-xs text-sky-50/70">
+            <p className="text-xs text-sky-50/80">
               {settings?.office_hours
                 ? `Toimisto: ${settings.office_hours}`
                 : "Toimisto torstaisin klo 17–18"}
@@ -66,8 +64,8 @@ export default async function HomePage() {
             </p>
           </div>
 
-          {/* oikean reunan kortti */}
-          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-slate-950/70 p-5 backdrop-blur-md md:w-80">
+          {/* oikea kortti */}
+          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-slate-950/80 p-5 shadow-lg backdrop-blur-md md:w-80">
             <h2 className="text-sm font-semibold">Satamatilanne</h2>
             <p className="mt-1 text-xs text-slate-100/80">
               {settings?.harbor_status
@@ -92,6 +90,10 @@ export default async function HomePage() {
             </Link>
           </div>
         </div>
+
+        {/* AALLOT (nämä liikkuvat) */}
+        <div className="wave-layer wave-1" aria-hidden />
+        <div className="wave-layer wave-2" aria-hidden />
       </section>
 
       {/* PALVELUT */}

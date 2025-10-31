@@ -29,3 +29,67 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+/* --- AALLOT HEROON (tiedostoista) --- */
+.wave-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.wave-layer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 180px;
+  background-repeat: repeat-x;
+  background-size: 1200px 180px;
+  animation: wave-move 16s linear infinite;
+  pointer-events: none;
+}
+
+/* ylempi aalto */
+.wave-layer.wave-1 {
+  bottom: -50px;
+  background-image: url("/wave-top.svg");
+  opacity: 0.55;
+}
+
+/* alempi aalto, eri nopeus ja suunta */
+.wave-layer.wave-2 {
+  bottom: -70px;
+  background-image: url("/wave-bottom.svg");
+  animation-duration: 24s;
+  animation-direction: reverse;
+  opacity: 0.5;
+}
+
+@keyframes wave-move {
+  0% {
+    background-position-x: 0;
+  }
+  100% {
+    background-position-x: -1200px;
+  }
+}
+
+/* pieni pystysuuntainen “hengitys” jotta näyttää vedeltä */
+.wave-layer.wave-1 {
+  animation: wave-move 16s linear infinite, wave-bob 5s ease-in-out infinite;
+}
+.wave-layer.wave-2 {
+  animation: wave-move 24s linear infinite reverse, wave-bob 7s ease-in-out infinite;
+}
+
+@keyframes wave-bob {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(5px);
+  }
+}
+
+/* taustan sininen */
+.ocean-bg-solid {
+  background: radial-gradient(circle at 20% 20%, #7fd3ff 0%, #0077b6 45%, #003a6b 100%);
+}
+
