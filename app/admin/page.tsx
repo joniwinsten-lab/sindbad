@@ -1,4 +1,3 @@
-// app/admin/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -47,7 +46,6 @@ export default function AdminPage() {
   const [board, setBoard] = useState<BoardMember[]>([]);
   const [officers, setOfficers] = useState<Officer[]>([]);
 
-  // hae kaikki data
   useEffect(() => {
     async function load() {
       // tapahtumat
@@ -181,7 +179,7 @@ export default function AdminPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Hallintapaneeli</h1>
           <p className="text-sm text-slate-500">
-            Luo tapahtumia, päivitä yhteystiedot ja hallitse hallitusta.
+            Luo tapahtumia, päivitä yhteystiedot ja hallitse seuran sisältöä.
           </p>
         </div>
         <button
@@ -341,7 +339,7 @@ export default function AdminPage() {
         </form>
       </section>
 
-      {/* Seura / hallinto (hallituksen jäsenet + toimihenkilöt) */}
+      {/* Seura / hallinto */}
       <section className="space-y-8 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
         <div>
           <h2 className="text-base font-semibold text-slate-900">Seura / hallinto</h2>
@@ -506,7 +504,314 @@ export default function AdminPage() {
             </form>
           </div>
         </div>
+
+        <div className="h-px bg-slate-100" />
+
+        {/* Satama-sivu */}
+        <HarborContentEditor />
       </section>
+    </div>
+  );
+}
+
+/* satama-editori */
+function HarborContentEditor() {
+  const supabase = createClient();
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState<{
+    id: string;
+    title: string | null;
+    intro: string | null;
+    location: string | null;
+    map_url: string | null;
+  } | null>(null);
+  const [cards, setCards] = useState<
+    { id: string; title: string; body: string | null; sort_order: number | null }[]
+  >([]);
+  const [rules, setRules] = useState<
+    { id: string; text: string; sort_order: number | null }[]
+  >([]);
+
+  useEffect(() => {
+    async function load() {
+      const { data: harbor } = await supabase
+        .from("harbor_page")
+        .select("*")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const { data: featureCards } = await supabase
+        .from("harbor_feature_cards")
+        .select("*")
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
+
+      const { data: harborRules } = await supabase
+        .from("harbor_rules")
+        .select("*")
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
+
+      setPage(harbor || null);
+      setCards(featureCards || []);
+      setRules(harborRules || []);
+      setLoading(false);
+    }
+    load();
+  }, [supabase]);
+
+  async function savePage(fd: FormData) {
+    const payload = {
+      title: String(fd.get("title") || ""),
+      intro: String(fd.get("intro") || ""),
+      location: String(fd.get("location") || ""),
+      map_url: String(fd.get("map_url") || ""),
+    };
+    if (page?.id) {
+      const { data } = await supabase
+        .from("harbor_page")
+        .update(payload)
+        .eq("id", page.id)
+        .select()
+        .single();
+      if (data) setPage(data);
+    } else {
+      const { data } = await supabase.from("harbor_page").insert(payload).select().single();
+      if (data) setPage(data);
+    }
+  }
+
+  async function addCard(fd: FormData) {
+    const payload = {
+      title: String(fd.get("title") || ""),
+      body: String(fd.get("body") || ""),
+      sort_order: Number(fd.get("sort_order") || 0),
+    };
+    const { data, error } = await supabase
+      .from("harbor_feature_cards")
+      .insert(payload)
+      .select()
+      .single();
+    if (!error && data) {
+      setCards((prev) =>
+        [...prev, data].sort(
+          (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.title.localeCompare(b.title),
+        ),
+      );
+    }
+  }
+
+  async function deleteCard(id: string) {
+    await supabase.from("harbor_feature_cards").delete().eq("id", id);
+    setCards((prev) => prev.filter((c) => c.id !== id));
+  }
+
+  async function addRule(fd: FormData) {
+    const payload = {
+      text: String(fd.get("text") || ""),
+      sort_order: Number(fd.get("sort_order") || 0),
+    };
+    const { data, error } = await supabase.from("harbor_rules").insert(payload).select().single();
+    if (!error && data) {
+      setRules((prev) =>
+        [...prev, data].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
+      );
+    }
+  }
+
+  async function deleteRule(id: string) {
+    await supabase.from("harbor_rules").delete().eq("id", id);
+    setRules((prev) => prev.filter((r) => r.id !== id));
+  }
+
+  if (loading) {
+    return <p className="text-sm text-slate-400">Ladataan sataman sisältöä…</p>;
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h3 className="text-sm font-semibold text-slate-900">Satama-sivu</h3>
+        <p className="text-sm text-slate-500">Päivitä otsikko, ingressi ja karttalinkki.</p>
+      </div>
+
+      {/* perus */}
+      <form
+        className="grid gap-4 md:grid-cols-2"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          await savePage(fd);
+        }}
+      >
+        <div>
+          <label className="text-sm font-medium text-slate-800">Otsikko</label>
+          <input
+            name="title"
+            defaultValue={page?.title ?? ""}
+            className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium text-slate-800">Sijainti / osoite</label>
+          <input
+            name="location"
+            defaultValue={page?.location ?? ""}
+            className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+          />
+        </div>
+        <div className="md:col-span-2">
+          <label className="text-sm font-medium text-slate-800">Ingressi</label>
+          <textarea
+            name="intro"
+            rows={3}
+            defaultValue={page?.intro ?? ""}
+            className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+          />
+        </div>
+        <div className="md:col-span-2">
+          <label className="text-sm font-medium text-slate-800">Karttalinkki</label>
+          <input
+            name="map_url"
+            defaultValue={page?.map_url ?? ""}
+            placeholder="https://maps.app.goo.gl/..."
+            className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+          />
+        </div>
+        <div className="md:col-span-2">
+          <button
+            type="submit"
+            className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
+          >
+            Tallenna satama-sivun perussisältö
+          </button>
+        </div>
+      </form>
+
+      {/* kortit */}
+      <div className="grid gap-6 md:grid-cols-[1.1fr,0.9fr]">
+        <div>
+          <h4 className="text-sm font-semibold text-slate-900">Sataman kortit</h4>
+          <ul className="mt-3 space-y-2">
+            {cards.map((c) => (
+              <li
+                key={c.id}
+                className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-4 py-2"
+              >
+                <div>
+                  <p className="text-sm font-medium text-slate-900">{c.title}</p>
+                  <p className="text-xs text-slate-500">{c.body}</p>
+                </div>
+                <button
+                  onClick={() => deleteCard(c.id)}
+                  className="text-xs text-red-500 hover:text-red-700"
+                >
+                  Poista
+                </button>
+              </li>
+            ))}
+            {cards.length === 0 && (
+              <p className="text-xs text-slate-400">Ei kortteja vielä.</p>
+            )}
+          </ul>
+        </div>
+        <div>
+          <h5 className="text-sm font-semibold text-slate-900">Lisää kortti</h5>
+          <form
+            className="mt-3 space-y-3"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const fd = new FormData(e.currentTarget);
+              await addCard(fd);
+              e.currentTarget.reset();
+            }}
+          >
+            <input
+              name="title"
+              required
+              placeholder="Esim. Laituripaikat"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+            />
+            <textarea
+              name="body"
+              rows={2}
+              placeholder="Lyhyt kuvaus"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+            />
+            <input
+              name="sort_order"
+              type="number"
+              placeholder="Järjestys"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+            />
+            <button
+              type="submit"
+              className="w-full rounded-lg bg-sky-600 py-2 text-sm font-medium text-white hover:bg-sky-700"
+            >
+              Lisää kortti
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* säännöt */}
+      <div className="grid gap-6 md:grid-cols-[1.1fr,0.9fr]">
+        <div>
+          <h4 className="text-sm font-semibold text-slate-900">Sataman säännöt / ohjeet</h4>
+          <ul className="mt-3 space-y-2">
+            {rules.map((r) => (
+              <li
+                key={r.id}
+                className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-4 py-2"
+              >
+                <p className="text-sm text-slate-700">{r.text}</p>
+                <button
+                  onClick={() => deleteRule(r.id)}
+                  className="text-xs text-red-500 hover:text-red-700"
+                >
+                  Poista
+                </button>
+              </li>
+            ))}
+            {rules.length === 0 && (
+              <p className="text-xs text-slate-400">Ei sääntöjä vielä.</p>
+            )}
+          </ul>
+        </div>
+        <div>
+          <h5 className="text-sm font-semibold text-slate-900">Lisää sääntö</h5>
+          <form
+            className="mt-3 space-y-3"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const fd = new FormData(e.currentTarget);
+              await addRule(fd);
+              e.currentTarget.reset();
+            }}
+          >
+            <textarea
+              name="text"
+              rows={2}
+              required
+              placeholder="Esim. Laituripaikka on henkilökohtainen..."
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+            />
+            <input
+              name="sort_order"
+              type="number"
+              placeholder="Järjestys"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+            />
+            <button
+              type="submit"
+              className="w-full rounded-lg bg-sky-600 py-2 text-sm font-medium text-white hover:bg-sky-700"
+            >
+              Lisää sääntö
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }
