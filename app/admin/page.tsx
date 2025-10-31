@@ -45,8 +45,11 @@ export default function AdminPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [board, setBoard] = useState<BoardMember[]>([]);
   const [officers, setOfficers] = useState<Officer[]>([]);
+  const [admins, setAdmins] = useState<
+    { id: string; email: string | null; role: string | null }[]
+  >([]);
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "settings" | "governance" | "harbor"
+    "dashboard" | "settings" | "governance" | "harbor" | "users"
   >("dashboard");
 
   useEffect(() => {
@@ -70,10 +73,18 @@ export default function AdminPage() {
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true });
 
+      // admin-käyttäjät
+      const { data: adminsData } = await supabase
+        .from("profiles")
+        .select("id, email, role")
+        .eq("role", "admin")
+        .order("email", { ascending: true });
+
       setEvents(evts || []);
       setSettings(sets || null);
       setBoard(boardData || []);
       setOfficers(officerData || []);
+      setAdmins(adminsData || []);
       setLoading(false);
     }
     load();
@@ -99,6 +110,63 @@ export default function AdminPage() {
   async function deleteEvent(id: string) {
     await supabase.from("events").delete().eq("id", id);
     setEvents((prev) => prev.filter((e) => e.id !== id));
+  }
+
+  // admin: lisää
+  async function addAdminUser(fd: FormData) {
+    const emailRaw = fd.get("email");
+    if (!emailRaw) return;
+    const email = String(emailRaw).trim().toLowerCase();
+
+    // onko jo profiilia tällä emaililla?
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select("id, email, role")
+      .eq("email", email)
+      .maybeSingle();
+
+    if (existing) {
+      const { data } = await supabase
+        .from("profiles")
+        .update({ role: "admin" })
+        .eq("id", existing.id)
+        .select()
+        .single();
+
+      if (data) {
+        setAdmins((prev) => {
+          const filtered = prev.filter((a) => a.id !== data.id);
+          return [...filtered, data].sort((a, b) => (a.email || "").localeCompare(b.email || ""));
+        });
+      }
+    } else {
+      // luodaan pelkkä profiili – user kirjautuu myöhemmin
+      const { data } = await supabase
+        .from("profiles")
+        .insert({ email, role: "admin" })
+        .select()
+        .single();
+
+      if (data) {
+        setAdmins((prev) =>
+          [...prev, data].sort((a, b) => (a.email || "").localeCompare(b.email || "")),
+        );
+      }
+    }
+  }
+
+  // admin: poista
+  async function removeAdminUser(id: string) {
+    const { data } = await supabase
+      .from("profiles")
+      .update({ role: "user" })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (data) {
+      setAdmins((prev) => prev.filter((a) => a.id !== id));
+    }
   }
 
   // asetukset: tallenna
@@ -220,7 +288,18 @@ export default function AdminPage() {
           >
             <span>Satama-sivu</span>
           </button>
+          <button
+            onClick={() => setActiveTab("users")}
+            className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm ${
+              activeTab === "users"
+                ? "bg-sky-50 text-sky-700"
+                : "text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            <span>Käyttäjät</span>
+          </button>
         </nav>
+
         <div className="mt-6 border-t border-slate-100 pt-4">
           <button
             onClick={async () => {
@@ -236,20 +315,18 @@ export default function AdminPage() {
 
       {/* MAIN CONTENT */}
       <div className="flex-1 space-y-10">
+        {/* DASHBOARD */}
         {activeTab === "dashboard" && (
           <>
             <header className="flex items-center justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                  Dashboard
-                </h1>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900">Dashboard</h1>
                 <p className="text-sm text-slate-500">
                   Luo tapahtumia ja pidä ajankohtaiset asiat esillä.
                 </p>
               </div>
             </header>
 
-            {/* Tapahtumat */}
             <section className="grid gap-6 md:grid-cols-[1.1fr,0.9fr]">
               {/* lista */}
               <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
@@ -284,7 +361,7 @@ export default function AdminPage() {
                 </ul>
               </div>
 
-              {/* uusi tapahtuma */}
+              {/* uusi */}
               <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
                 <h3 className="text-sm font-semibold text-slate-900">Lisää tapahtuma</h3>
                 <form
@@ -341,6 +418,7 @@ export default function AdminPage() {
           </>
         )}
 
+        {/* SEURAN TIEDOT */}
         {activeTab === "settings" && (
           <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
             <h2 className="text-base font-semibold text-slate-900">Seuran tiedot</h2>
@@ -400,12 +478,11 @@ export default function AdminPage() {
           </section>
         )}
 
+        {/* HALLITUS */}
         {activeTab === "governance" && (
           <section className="space-y-8 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
             <div>
-              <h2 className="text-base font-semibold text-slate-900">
-                Hallitus & toimihenkilöt
-              </h2>
+              <h2 className="text-base font-semibold text-slate-900">Hallitus & toimihenkilöt</h2>
               <p className="text-sm text-slate-500">
                 Lisää ja muokkaa hallituksen jäseniä ja toimihenkilöitä. Näkyy julkisella /seura -sivulla.
               </p>
@@ -570,6 +647,7 @@ export default function AdminPage() {
           </section>
         )}
 
+        {/* SATAMA */}
         {activeTab === "harbor" && (
           <section className="space-y-8 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
             <div>
@@ -579,6 +657,79 @@ export default function AdminPage() {
               </p>
             </div>
             <HarborContentEditor />
+          </section>
+        )}
+
+        {/* KÄYTTÄJÄT */}
+        {activeTab === "users" && (
+          <section className="space-y-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">Käyttäjät / ylläpitäjät</h2>
+              <p className="text-sm text-slate-500">
+                Täältä voit lisätä uusia käyttäjiä, joilla on oikeus muokata sivuston sisältöä.
+              </p>
+            </div>
+
+            {/* lista admineista */}
+            <div>
+              <h3 className="mb-2 text-sm font-semibold text-slate-900">Nykyiset adminit</h3>
+              <ul className="space-y-2">
+                {admins.map((user) => (
+                  <li
+                    key={user.id}
+                    className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-2"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">{user.email ?? "–"}</p>
+                      <p className="text-xs text-slate-500">{user.role}</p>
+                    </div>
+                    <button
+                      onClick={() => removeAdminUser(user.id)}
+                      className="text-xs text-red-500 hover:text-red-700"
+                    >
+                      Poista admin
+                    </button>
+                  </li>
+                ))}
+                {admins.length === 0 && (
+                  <p className="text-xs text-slate-400">Ei admin-käyttäjiä vielä.</p>
+                )}
+              </ul>
+            </div>
+
+            {/* lomake */}
+            <div className="rounded-xl bg-slate-50 p-4">
+              <h3 className="text-sm font-semibold text-slate-900">Lisää uusi admin</h3>
+              <p className="mb-3 text-xs text-slate-500">
+                Kirjoita sähköposti. Jos profiilia ei ole vielä, luomme admin-profiilin ja käyttäjä
+                voi kirjautua myöhemmin samalla osoitteella.
+              </p>
+              <form
+  className="flex flex-col gap-3 md:flex-row"
+  onSubmit={async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;           // talteen ennen awaitia
+    const fd = new FormData(form);
+    await addAdminUser(fd);
+    form.reset();                           // nyt se ei ole null
+  }}
+>
+
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  placeholder="esim. hallitus@sindbad.fi"
+                  className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                />
+                <button
+                  type="submit"
+                  className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
+                >
+                  Lisää
+                </button>
+              </form>
+            </div>
           </section>
         )}
       </div>
