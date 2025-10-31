@@ -1,3 +1,4 @@
+// app/admin/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,10 +8,10 @@ type Event = {
   id: string;
   title: string;
   date: string;
-  time?: string;
-  location?: string;
-  type?: string;
-  description?: string;
+  time?: string | null;
+  location?: string | null;
+  type?: string | null;
+  description?: string | null;
 };
 
 type Settings = {
@@ -21,42 +22,89 @@ type Settings = {
   harbor_status: string | null;
 };
 
+type BoardMember = {
+  id: string;
+  name: string;
+  role: string;
+  email: string | null;
+  sort_order: number | null;
+};
+
+type Officer = {
+  id: string;
+  name: string;
+  responsibility: string | null;
+  contact: string | null;
+  sort_order: number | null;
+};
+
 export default function AdminPage() {
   const supabase = createClient();
+
+  const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<Event[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [board, setBoard] = useState<BoardMember[]>([]);
+  const [officers, setOfficers] = useState<Officer[]>([]);
 
-  // hae data
+  // hae kaikki data
   useEffect(() => {
     async function load() {
+      // tapahtumat
       const { data: evts } = await supabase
         .from("events")
         .select("*")
         .order("date", { ascending: true });
+
+      // seuran asetukset
       const { data: sets } = await supabase.from("site_settings").select("*").limit(1).single();
+
+      // hallitus
+      const { data: boardData } = await supabase
+        .from("board_members")
+        .select("*")
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
+
+      // toimihenkilöt
+      const { data: officerData } = await supabase
+        .from("officers")
+        .select("*")
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
+
       setEvents(evts || []);
-      setSettings(sets);
+      setSettings(sets || null);
+      setBoard(boardData || []);
+      setOfficers(officerData || []);
       setLoading(false);
     }
     load();
   }, [supabase]);
 
+  // tapahtuma: lisää
   async function addEvent(formData: FormData) {
     const newEvent = {
       title: String(formData.get("title") || ""),
       date: String(formData.get("date") || ""),
-      time: String(formData.get("time") || ""),
-      location: String(formData.get("location") || ""),
-      type: String(formData.get("type") || ""),
-      description: String(formData.get("description") || ""),
+      time: String(formData.get("time") || "") || null,
+      location: String(formData.get("location") || "") || null,
+      type: String(formData.get("type") || "") || null,
+      description: String(formData.get("description") || "") || null,
     };
     const { data, error } = await supabase.from("events").insert(newEvent).select().single();
     if (!error && data) {
-      setEvents((prev) => [...prev, data]);
+      setEvents((prev) => [...prev, data].sort((a, b) => a.date.localeCompare(b.date)));
     }
   }
 
+  // tapahtuma: poista
+  async function deleteEvent(id: string) {
+    await supabase.from("events").delete().eq("id", id);
+    setEvents((prev) => prev.filter((e) => e.id !== id));
+  }
+
+  // asetukset: tallenna
   async function updateSettings(formData: FormData) {
     const payload = {
       office_hours: String(formData.get("office_hours") || ""),
@@ -64,6 +112,7 @@ export default function AdminPage() {
       email: String(formData.get("email") || ""),
       harbor_status: String(formData.get("harbor_status") || ""),
     };
+
     if (settings?.id) {
       await supabase.from("site_settings").update(payload).eq("id", settings.id);
       setSettings({ ...settings, ...payload });
@@ -73,9 +122,52 @@ export default function AdminPage() {
     }
   }
 
-  async function deleteEvent(id: string) {
-    await supabase.from("events").delete().eq("id", id);
-    setEvents((prev) => prev.filter((e) => e.id !== id));
+  // hallitus: lisää
+  async function addBoardMember(fd: FormData) {
+    const payload = {
+      name: String(fd.get("name") || ""),
+      role: String(fd.get("role") || ""),
+      email: String(fd.get("email") || "") || null,
+      sort_order: Number(fd.get("sort_order") || 0),
+    };
+    const { data, error } = await supabase.from("board_members").insert(payload).select().single();
+    if (!error && data) {
+      setBoard((prev) =>
+        [...prev, data].sort(
+          (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name),
+        ),
+      );
+    }
+  }
+
+  // hallitus: poista
+  async function deleteBoardMember(id: string) {
+    await supabase.from("board_members").delete().eq("id", id);
+    setBoard((prev) => prev.filter((b) => b.id !== id));
+  }
+
+  // toimihenkilö: lisää
+  async function addOfficer(fd: FormData) {
+    const payload = {
+      name: String(fd.get("name") || ""),
+      responsibility: String(fd.get("responsibility") || "") || null,
+      contact: String(fd.get("contact") || "") || null,
+      sort_order: Number(fd.get("sort_order") || 0),
+    };
+    const { data, error } = await supabase.from("officers").insert(payload).select().single();
+    if (!error && data) {
+      setOfficers((prev) =>
+        [...prev, data].sort(
+          (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name),
+        ),
+      );
+    }
+  }
+
+  // toimihenkilö: poista
+  async function deleteOfficer(id: string) {
+    await supabase.from("officers").delete().eq("id", id);
+    setOfficers((prev) => prev.filter((o) => o.id !== id));
   }
 
   if (loading) {
@@ -84,17 +176,18 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-10">
+      {/* header */}
       <header className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Hallintapaneeli</h1>
           <p className="text-sm text-slate-500">
-            Luo tapahtumia, päivitä yhteystiedot ja sataman tilanne.
+            Luo tapahtumia, päivitä yhteystiedot ja hallitse hallitusta.
           </p>
         </div>
         <button
           onClick={async () => {
             await supabase.auth.signOut();
-            location.href = "/login";
+            window.location.href = "/login";
           }}
           className="text-sm font-medium text-slate-500 hover:text-slate-900"
         >
@@ -104,6 +197,7 @@ export default function AdminPage() {
 
       {/* Tapahtumat */}
       <section className="grid gap-6 md:grid-cols-[1.1fr,0.9fr]">
+        {/* lista */}
         <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
           <h2 className="text-base font-semibold text-slate-900">Tapahtumat</h2>
           <p className="text-sm text-slate-500">Lista kaikista tapahtumista.</p>
@@ -130,66 +224,68 @@ export default function AdminPage() {
                 </button>
               </li>
             ))}
+            {events.length === 0 && (
+              <p className="text-xs text-slate-400">Ei tapahtumia.</p>
+            )}
           </ul>
         </div>
 
-{/* Uusi tapahtuma */}
-<div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-  <h3 className="text-sm font-semibold text-slate-900">Lisää tapahtuma</h3>
-  <form
-    className="mt-4 space-y-3"
-    onSubmit={async (e) => {
-      e.preventDefault();
-      const fd = new FormData(e.currentTarget);
-      await addEvent(fd);
-      e.currentTarget.reset();
-    }}
-  >
-    <input
-      name="title"
-      required
-      placeholder="Esim. Kevättalkoot"
-      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-    />
-    <input
-      type="date"
-      name="date"
-      required
-      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-    />
-    <input
-      name="time"
-      placeholder="esim. 10:00–13:00"
-      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-    />
-    <input
-      name="location"
-      placeholder="Satama"
-      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-    />
-    <input
-      name="type"
-      placeholder="Talkoot / Tapahtuma / Satama"
-      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-    />
-    <textarea
-      name="description"
-      rows={3}
-      placeholder="Lyhyt kuvaus"
-      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-    />
-    <button
-      type="submit"
-      className="w-full rounded-lg bg-sky-600 py-2 text-sm font-medium text-white hover:bg-sky-700"
-    >
-      Tallenna tapahtuma
-    </button>
-  </form>
-</div>
-
+        {/* uusi tapahtuma */}
+        <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+          <h3 className="text-sm font-semibold text-slate-900">Lisää tapahtuma</h3>
+          <form
+            className="mt-4 space-y-3"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const fd = new FormData(e.currentTarget);
+              await addEvent(fd);
+              e.currentTarget.reset();
+            }}
+          >
+            <input
+              name="title"
+              required
+              placeholder="Esim. Kevättalkoot"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+            />
+            <input
+              type="date"
+              name="date"
+              required
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+            />
+            <input
+              name="time"
+              placeholder="esim. 10:00–13:00"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+            />
+            <input
+              name="location"
+              placeholder="Satama"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+            />
+            <input
+              name="type"
+              placeholder="Talkoot / Tapahtuma / Satama"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+            />
+            <textarea
+              name="description"
+              rows={3}
+              placeholder="Lyhyt kuvaus"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+            />
+            <button
+              type="submit"
+              className="w-full rounded-lg bg-sky-600 py-2 text-sm font-medium text-white hover:bg-sky-700"
+            >
+              Tallenna tapahtuma
+            </button>
+          </form>
+        </div>
       </section>
 
-      {/* Yhteystiedot / sataman tilanne */}
+      {/* Seuran tiedot */}
       <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
         <h2 className="text-base font-semibold text-slate-900">Seuran tiedot</h2>
         <p className="text-sm text-slate-500">Päivitä toimistoaika, puhelin ja sataman tilanne.</p>
@@ -243,6 +339,173 @@ export default function AdminPage() {
             </button>
           </div>
         </form>
+      </section>
+
+      {/* Seura / hallinto (hallituksen jäsenet + toimihenkilöt) */}
+      <section className="space-y-8 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">Seura / hallinto</h2>
+          <p className="text-sm text-slate-500">
+            Lisää ja muokkaa hallituksen jäseniä ja toimihenkilöitä. Näkyy julkisella /seura -sivulla.
+          </p>
+        </div>
+
+        {/* Hallitus */}
+        <div className="grid gap-6 md:grid-cols-[1.1fr,0.9fr]">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">Hallituksen jäsenet</h3>
+            <ul className="mt-3 space-y-2">
+              {board.map((person) => (
+                <li
+                  key={person.id}
+                  className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-4 py-2"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{person.name}</p>
+                    <p className="text-xs text-slate-500">
+                      {person.role}
+                      {person.email ? ` • ${person.email}` : ""}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => deleteBoardMember(person.id)}
+                    className="text-xs text-red-500 hover:text-red-700"
+                  >
+                    Poista
+                  </button>
+                </li>
+              ))}
+              {board.length === 0 && (
+                <p className="text-xs text-slate-400">Ei hallituksen jäseniä vielä.</p>
+              )}
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-semibold text-slate-900">Lisää hallituksen jäsen</h4>
+            <form
+              className="mt-3 space-y-3"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                await addBoardMember(fd);
+                e.currentTarget.reset();
+              }}
+            >
+              <input
+                name="name"
+                required
+                placeholder="Nimi"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+              />
+              <input
+                name="role"
+                required
+                placeholder="Tehtävä (esim. Puheenjohtaja)"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+              />
+              <input
+                name="email"
+                type="email"
+                placeholder="Sähköposti"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+              />
+              <input
+                name="sort_order"
+                type="number"
+                placeholder="Järjestys (pienin ensin)"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+              />
+              <button
+                type="submit"
+                className="w-full rounded-lg bg-sky-600 py-2 text-sm font-medium text-white hover:bg-sky-700"
+              >
+                Lisää
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div className="h-px bg-slate-100" />
+
+        {/* Toimihenkilöt */}
+        <div className="grid gap-6 md:grid-cols-[1.1fr,0.9fr]">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">Toimihenkilöt</h3>
+            <ul className="mt-3 space-y-2">
+              {officers.map((p) => (
+                <li
+                  key={p.id}
+                  className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-4 py-2"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{p.name}</p>
+                    {p.responsibility ? (
+                      <p className="text-xs text-slate-500">{p.responsibility}</p>
+                    ) : null}
+                    {p.contact ? (
+                      <p className="text-xs text-slate-500">
+                        {p.contact.startsWith("0") || p.contact.startsWith("+") ? "Puh. " : ""}
+                        {p.contact}
+                      </p>
+                    ) : null}
+                  </div>
+                  <button
+                    onClick={() => deleteOfficer(p.id)}
+                    className="text-xs text-red-500 hover:text-red-700"
+                  >
+                    Poista
+                  </button>
+                </li>
+              ))}
+              {officers.length === 0 && (
+                <p className="text-xs text-slate-400">Ei toimihenkilöitä vielä.</p>
+              )}
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-semibold text-slate-900">Lisää toimihenkilö</h4>
+            <form
+              className="mt-3 space-y-3"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                await addOfficer(fd);
+                e.currentTarget.reset();
+              }}
+            >
+              <input
+                name="name"
+                required
+                placeholder="Nimi"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+              />
+              <input
+                name="responsibility"
+                placeholder="Vastuu (esim. Satamakapteeni)"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+              />
+              <input
+                name="contact"
+                placeholder="Yhteys (puh. tai email)"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+              />
+              <input
+                name="sort_order"
+                type="number"
+                placeholder="Järjestys"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+              />
+              <button
+                type="submit"
+                className="w-full rounded-lg bg-sky-600 py-2 text-sm font-medium text-white hover:bg-sky-700"
+              >
+                Lisää
+              </button>
+            </form>
+          </div>
+        </div>
       </section>
     </div>
   );
