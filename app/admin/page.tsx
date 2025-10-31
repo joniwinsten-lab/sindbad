@@ -133,62 +133,60 @@ export default function AdminPage() {
           </ul>
         </div>
 
-        {/* Uusi tapahtuma */}
-        <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-          <h3 className="text-sm font-semibold text-slate-900">Lisää tapahtuma</h3>
-          <form
-            action={async (formData) => {
-              "use server";
-            }}
-            className="mt-4 space-y-3"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const fd = new FormData(e.currentTarget);
-              await addEvent(fd);
-              e.currentTarget.reset();
-            }}
-          >
-            <input
-              name="title"
-              required
-              placeholder="Esim. Kevättalkoot"
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-            />
-            <input
-              type="date"
-              name="date"
-              required
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-            />
-            <input
-              name="time"
-              placeholder="esim. 10:00–13:00"
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-            />
-            <input
-              name="location"
-              placeholder="Satama"
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-            />
-            <input
-              name="type"
-              placeholder="Talkoot / Tapahtuma / Satama"
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-            />
-            <textarea
-              name="description"
-              rows={3}
-              placeholder="Lyhyt kuvaus"
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-            />
-            <button
-              type="submit"
-              className="w-full rounded-lg bg-sky-600 py-2 text-sm font-medium text-white hover:bg-sky-700"
-            >
-              Tallenna tapahtuma
-            </button>
-          </form>
-        </div>
+{/* Uusi tapahtuma */}
+<div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+  <h3 className="text-sm font-semibold text-slate-900">Lisää tapahtuma</h3>
+  <form
+    className="mt-4 space-y-3"
+    onSubmit={async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.currentTarget);
+      await addEvent(fd);
+      e.currentTarget.reset();
+    }}
+  >
+    <input
+      name="title"
+      required
+      placeholder="Esim. Kevättalkoot"
+      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+    />
+    <input
+      type="date"
+      name="date"
+      required
+      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+    />
+    <input
+      name="time"
+      placeholder="esim. 10:00–13:00"
+      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+    />
+    <input
+      name="location"
+      placeholder="Satama"
+      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+    />
+    <input
+      name="type"
+      placeholder="Talkoot / Tapahtuma / Satama"
+      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+    />
+    <textarea
+      name="description"
+      rows={3}
+      placeholder="Lyhyt kuvaus"
+      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+    />
+    <button
+      type="submit"
+      className="w-full rounded-lg bg-sky-600 py-2 text-sm font-medium text-white hover:bg-sky-700"
+    >
+      Tallenna tapahtuma
+    </button>
+  </form>
+</div>
+
       </section>
 
       {/* Yhteystiedot / sataman tilanne */}
