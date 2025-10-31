@@ -1,5 +1,6 @@
 // app/tapahtumat/page.tsx
 import { createServerClient } from "@/lib/supabaseServer";
+export const dynamic = "force-dynamic";
 
 type Event = {
   id: string;
