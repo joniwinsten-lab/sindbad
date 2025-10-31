@@ -45,26 +45,25 @@ export default function AdminPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [board, setBoard] = useState<BoardMember[]>([]);
   const [officers, setOfficers] = useState<Officer[]>([]);
+  const [activeTab, setActiveTab] = useState<
+    "dashboard" | "settings" | "governance" | "harbor"
+  >("dashboard");
 
   useEffect(() => {
     async function load() {
-      // tapahtumat
       const { data: evts } = await supabase
         .from("events")
         .select("*")
         .order("date", { ascending: true });
 
-      // seuran asetukset
       const { data: sets } = await supabase.from("site_settings").select("*").limit(1).single();
 
-      // hallitus
       const { data: boardData } = await supabase
         .from("board_members")
         .select("*")
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true });
 
-      // toimihenkilöt
       const { data: officerData } = await supabase
         .from("officers")
         .select("*")
@@ -173,348 +172,421 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="space-y-10">
-      {/* header */}
-      <header className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Hallintapaneeli</h1>
-          <p className="text-sm text-slate-500">
-            Luo tapahtumia, päivitä yhteystiedot ja hallitse seuran sisältöä.
-          </p>
+    <div className="flex gap-6">
+      {/* SIDEBAR */}
+      <aside className="sticky top-6 h-[calc(100vh-3rem)] w-56 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+        <div className="mb-6">
+          <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Admin</p>
+          <p className="text-sm font-semibold text-slate-900">Pursiseura Sindbad</p>
         </div>
-        <button
-          onClick={async () => {
-            await supabase.auth.signOut();
-            window.location.href = "/login";
-          }}
-          className="text-sm font-medium text-slate-500 hover:text-slate-900"
-        >
-          Kirjaudu ulos
-        </button>
-      </header>
-
-      {/* Tapahtumat */}
-      <section className="grid gap-6 md:grid-cols-[1.1fr,0.9fr]">
-        {/* lista */}
-        <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-          <h2 className="text-base font-semibold text-slate-900">Tapahtumat</h2>
-          <p className="text-sm text-slate-500">Lista kaikista tapahtumista.</p>
-          <ul className="mt-4 space-y-3">
-            {events.map((evt) => (
-              <li
-                key={evt.id}
-                className="flex items-start justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3"
-              >
-                <div>
-                  <p className="text-sm font-medium text-slate-900">{evt.title}</p>
-                  <p className="text-xs text-slate-500">
-                    {evt.date} {evt.time ? `• ${evt.time}` : ""}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {evt.location} {evt.type ? `• ${evt.type}` : ""}
-                  </p>
-                </div>
-                <button
-                  onClick={() => deleteEvent(evt.id)}
-                  className="text-xs text-red-500 hover:text-red-700"
-                >
-                  Poista
-                </button>
-              </li>
-            ))}
-            {events.length === 0 && (
-              <p className="text-xs text-slate-400">Ei tapahtumia.</p>
-            )}
-          </ul>
-        </div>
-
-        {/* uusi tapahtuma */}
-        <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-          <h3 className="text-sm font-semibold text-slate-900">Lisää tapahtuma</h3>
-          <form
-            className="mt-4 space-y-3"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const fd = new FormData(e.currentTarget);
-              await addEvent(fd);
-              e.currentTarget.reset();
-            }}
+        <nav className="space-y-1">
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm ${
+              activeTab === "dashboard"
+                ? "bg-sky-50 text-sky-700"
+                : "text-slate-600 hover:bg-slate-50"
+            }`}
           >
-            <input
-              name="title"
-              required
-              placeholder="Esim. Kevättalkoot"
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-            />
-            <input
-              type="date"
-              name="date"
-              required
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-            />
-            <input
-              name="time"
-              placeholder="esim. 10:00–13:00"
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-            />
-            <input
-              name="location"
-              placeholder="Satama"
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-            />
-            <input
-              name="type"
-              placeholder="Talkoot / Tapahtuma / Satama"
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-            />
-            <textarea
-              name="description"
-              rows={3}
-              placeholder="Lyhyt kuvaus"
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-            />
-            <button
-              type="submit"
-              className="w-full rounded-lg bg-sky-600 py-2 text-sm font-medium text-white hover:bg-sky-700"
-            >
-              Tallenna tapahtuma
-            </button>
-          </form>
+            <span>Dashboard</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("settings")}
+            className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm ${
+              activeTab === "settings"
+                ? "bg-sky-50 text-sky-700"
+                : "text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            <span>Seuran tiedot</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("governance")}
+            className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm ${
+              activeTab === "governance"
+                ? "bg-sky-50 text-sky-700"
+                : "text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            <span>Hallitus & toimihenkilöt</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("harbor")}
+            className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm ${
+              activeTab === "harbor"
+                ? "bg-sky-50 text-sky-700"
+                : "text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            <span>Satama-sivu</span>
+          </button>
+        </nav>
+        <div className="mt-6 border-t border-slate-100 pt-4">
+          <button
+            onClick={async () => {
+              await supabase.auth.signOut();
+              window.location.href = "/login";
+            }}
+            className="text-sm text-slate-400 hover:text-slate-700"
+          >
+            Kirjaudu ulos
+          </button>
         </div>
-      </section>
+      </aside>
 
-      {/* Seuran tiedot */}
-      <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-        <h2 className="text-base font-semibold text-slate-900">Seuran tiedot</h2>
-        <p className="text-sm text-slate-500">Päivitä toimistoaika, puhelin ja sataman tilanne.</p>
-        <form
-          className="mt-4 grid gap-4 md:grid-cols-2"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const fd = new FormData(e.currentTarget);
-            await updateSettings(fd);
-          }}
-        >
-          <div>
-            <label className="text-sm font-medium text-slate-800">Toimistoaika</label>
-            <input
-              name="office_hours"
-              defaultValue={settings?.office_hours ?? ""}
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-slate-800">Puhelin</label>
-            <input
-              name="phone"
-              defaultValue={settings?.phone ?? ""}
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-slate-800">Sähköposti</label>
-            <input
-              name="email"
-              defaultValue={settings?.email ?? ""}
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-slate-800">Sataman tilanne</label>
-            <input
-              name="harbor_status"
-              defaultValue={settings?.harbor_status ?? ""}
-              placeholder="Esim. Paikat täynnä / Rajoitetusti"
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <button
-              type="submit"
-              className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
-            >
-              Tallenna
-            </button>
-          </div>
-        </form>
-      </section>
+      {/* MAIN CONTENT */}
+      <div className="flex-1 space-y-10">
+        {activeTab === "dashboard" && (
+          <>
+            <header className="flex items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                  Dashboard
+                </h1>
+                <p className="text-sm text-slate-500">
+                  Luo tapahtumia ja pidä ajankohtaiset asiat esillä.
+                </p>
+              </div>
+            </header>
 
-      {/* Seura / hallinto */}
-      <section className="space-y-8 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Seura / hallinto</h2>
-          <p className="text-sm text-slate-500">
-            Lisää ja muokkaa hallituksen jäseniä ja toimihenkilöitä. Näkyy julkisella /seura -sivulla.
-          </p>
-        </div>
+            {/* Tapahtumat */}
+            <section className="grid gap-6 md:grid-cols-[1.1fr,0.9fr]">
+              {/* lista */}
+              <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+                <h2 className="text-base font-semibold text-slate-900">Tapahtumat</h2>
+                <p className="text-sm text-slate-500">Lista kaikista tapahtumista.</p>
+                <ul className="mt-4 space-y-3">
+                  {events.map((evt) => (
+                    <li
+                      key={evt.id}
+                      className="flex items-start justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{evt.title}</p>
+                        <p className="text-xs text-slate-500">
+                          {evt.date} {evt.time ? `• ${evt.time}` : ""}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {evt.location} {evt.type ? `• ${evt.type}` : ""}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => deleteEvent(evt.id)}
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        Poista
+                      </button>
+                    </li>
+                  ))}
+                  {events.length === 0 && (
+                    <p className="text-xs text-slate-400">Ei tapahtumia.</p>
+                  )}
+                </ul>
+              </div>
 
-        {/* Hallitus */}
-        <div className="grid gap-6 md:grid-cols-[1.1fr,0.9fr]">
-          <div>
-            <h3 className="text-sm font-semibold text-slate-900">Hallituksen jäsenet</h3>
-            <ul className="mt-3 space-y-2">
-              {board.map((person) => (
-                <li
-                  key={person.id}
-                  className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-4 py-2"
+              {/* uusi tapahtuma */}
+              <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+                <h3 className="text-sm font-semibold text-slate-900">Lisää tapahtuma</h3>
+                <form
+                  className="mt-4 space-y-3"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const fd = new FormData(e.currentTarget);
+                    await addEvent(fd);
+                    e.currentTarget.reset();
+                  }}
                 >
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">{person.name}</p>
-                    <p className="text-xs text-slate-500">
-                      {person.role}
-                      {person.email ? ` • ${person.email}` : ""}
-                    </p>
-                  </div>
+                  <input
+                    name="title"
+                    required
+                    placeholder="Esim. Kevättalkoot"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                  />
+                  <input
+                    type="date"
+                    name="date"
+                    required
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                  />
+                  <input
+                    name="time"
+                    placeholder="esim. 10:00–13:00"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                  />
+                  <input
+                    name="location"
+                    placeholder="Satama"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                  />
+                  <input
+                    name="type"
+                    placeholder="Talkoot / Tapahtuma / Satama"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                  />
+                  <textarea
+                    name="description"
+                    rows={3}
+                    placeholder="Lyhyt kuvaus"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                  />
                   <button
-                    onClick={() => deleteBoardMember(person.id)}
-                    className="text-xs text-red-500 hover:text-red-700"
+                    type="submit"
+                    className="w-full rounded-lg bg-sky-600 py-2 text-sm font-medium text-white hover:bg-sky-700"
                   >
-                    Poista
+                    Tallenna tapahtuma
                   </button>
-                </li>
-              ))}
-              {board.length === 0 && (
-                <p className="text-xs text-slate-400">Ei hallituksen jäseniä vielä.</p>
-              )}
-            </ul>
-          </div>
+                </form>
+              </div>
+            </section>
+          </>
+        )}
 
-          <div>
-            <h4 className="text-sm font-semibold text-slate-900">Lisää hallituksen jäsen</h4>
+        {activeTab === "settings" && (
+          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+            <h2 className="text-base font-semibold text-slate-900">Seuran tiedot</h2>
+            <p className="text-sm text-slate-500">
+              Päivitä toimistoaika, puhelin ja sataman tilanne.
+            </p>
             <form
-              className="mt-3 space-y-3"
+              className="mt-4 grid gap-4 md:grid-cols-2"
               onSubmit={async (e) => {
                 e.preventDefault();
                 const fd = new FormData(e.currentTarget);
-                await addBoardMember(fd);
-                e.currentTarget.reset();
+                await updateSettings(fd);
               }}
             >
-              <input
-                name="name"
-                required
-                placeholder="Nimi"
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-              />
-              <input
-                name="role"
-                required
-                placeholder="Tehtävä (esim. Puheenjohtaja)"
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-              />
-              <input
-                name="email"
-                type="email"
-                placeholder="Sähköposti"
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-              />
-              <input
-                name="sort_order"
-                type="number"
-                placeholder="Järjestys (pienin ensin)"
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-              />
-              <button
-                type="submit"
-                className="w-full rounded-lg bg-sky-600 py-2 text-sm font-medium text-white hover:bg-sky-700"
-              >
-                Lisää
-              </button>
-            </form>
-          </div>
-        </div>
-
-        <div className="h-px bg-slate-100" />
-
-        {/* Toimihenkilöt */}
-        <div className="grid gap-6 md:grid-cols-[1.1fr,0.9fr]">
-          <div>
-            <h3 className="text-sm font-semibold text-slate-900">Toimihenkilöt</h3>
-            <ul className="mt-3 space-y-2">
-              {officers.map((p) => (
-                <li
-                  key={p.id}
-                  className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-4 py-2"
+              <div>
+                <label className="text-sm font-medium text-slate-800">Toimistoaika</label>
+                <input
+                  name="office_hours"
+                  defaultValue={settings?.office_hours ?? ""}
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-800">Puhelin</label>
+                <input
+                  name="phone"
+                  defaultValue={settings?.phone ?? ""}
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-800">Sähköposti</label>
+                <input
+                  name="email"
+                  defaultValue={settings?.email ?? ""}
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-800">Sataman tilanne</label>
+                <input
+                  name="harbor_status"
+                  defaultValue={settings?.harbor_status ?? ""}
+                  placeholder="Esim. Paikat täynnä / Rajoitetusti"
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <button
+                  type="submit"
+                  className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
                 >
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">{p.name}</p>
-                    {p.responsibility ? (
-                      <p className="text-xs text-slate-500">{p.responsibility}</p>
-                    ) : null}
-                    {p.contact ? (
-                      <p className="text-xs text-slate-500">
-                        {p.contact.startsWith("0") || p.contact.startsWith("+") ? "Puh. " : ""}
-                        {p.contact}
-                      </p>
-                    ) : null}
-                  </div>
-                  <button
-                    onClick={() => deleteOfficer(p.id)}
-                    className="text-xs text-red-500 hover:text-red-700"
-                  >
-                    Poista
-                  </button>
-                </li>
-              ))}
-              {officers.length === 0 && (
-                <p className="text-xs text-slate-400">Ei toimihenkilöitä vielä.</p>
-              )}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-sm font-semibold text-slate-900">Lisää toimihenkilö</h4>
-            <form
-              className="mt-3 space-y-3"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const fd = new FormData(e.currentTarget);
-                await addOfficer(fd);
-                e.currentTarget.reset();
-              }}
-            >
-              <input
-                name="name"
-                required
-                placeholder="Nimi"
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-              />
-              <input
-                name="responsibility"
-                placeholder="Vastuu (esim. Satamakapteeni)"
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-              />
-              <input
-                name="contact"
-                placeholder="Yhteys (puh. tai email)"
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-              />
-              <input
-                name="sort_order"
-                type="number"
-                placeholder="Järjestys"
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-              />
-              <button
-                type="submit"
-                className="w-full rounded-lg bg-sky-600 py-2 text-sm font-medium text-white hover:bg-sky-700"
-              >
-                Lisää
-              </button>
+                  Tallenna
+                </button>
+              </div>
             </form>
-          </div>
-        </div>
+          </section>
+        )}
 
-        <div className="h-px bg-slate-100" />
+        {activeTab === "governance" && (
+          <section className="space-y-8 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">
+                Hallitus & toimihenkilöt
+              </h2>
+              <p className="text-sm text-slate-500">
+                Lisää ja muokkaa hallituksen jäseniä ja toimihenkilöitä. Näkyy julkisella /seura -sivulla.
+              </p>
+            </div>
 
-        {/* Satama-sivu */}
-        <HarborContentEditor />
-      </section>
+            {/* Hallitus */}
+            <div className="grid gap-6 md:grid-cols-[1.1fr,0.9fr]">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">Hallituksen jäsenet</h3>
+                <ul className="mt-3 space-y-2">
+                  {board.map((person) => (
+                    <li
+                      key={person.id}
+                      className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-4 py-2"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{person.name}</p>
+                        <p className="text-xs text-slate-500">
+                          {person.role}
+                          {person.email ? ` • ${person.email}` : ""}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => deleteBoardMember(person.id)}
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        Poista
+                      </button>
+                    </li>
+                  ))}
+                  {board.length === 0 && (
+                    <p className="text-xs text-slate-400">Ei hallituksen jäseniä vielä.</p>
+                  )}
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-semibold text-slate-900">Lisää hallituksen jäsen</h4>
+                <form
+                  className="mt-3 space-y-3"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const fd = new FormData(e.currentTarget);
+                    await addBoardMember(fd);
+                    e.currentTarget.reset();
+                  }}
+                >
+                  <input
+                    name="name"
+                    required
+                    placeholder="Nimi"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                  />
+                  <input
+                    name="role"
+                    required
+                    placeholder="Tehtävä (esim. Puheenjohtaja)"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                  />
+                  <input
+                    name="email"
+                    type="email"
+                    placeholder="Sähköposti"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                  />
+                  <input
+                    name="sort_order"
+                    type="number"
+                    placeholder="Järjestys (pienin ensin)"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                  />
+                  <button
+                    type="submit"
+                    className="w-full rounded-lg bg-sky-600 py-2 text-sm font-medium text-white hover:bg-sky-700"
+                  >
+                    Lisää
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <div className="h-px bg-slate-100" />
+
+            {/* Toimihenkilöt */}
+            <div className="grid gap-6 md:grid-cols-[1.1fr,0.9fr]">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">Toimihenkilöt</h3>
+                <ul className="mt-3 space-y-2">
+                  {officers.map((p) => (
+                    <li
+                      key={p.id}
+                      className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-4 py-2"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{p.name}</p>
+                        {p.responsibility ? (
+                          <p className="text-xs text-slate-500">{p.responsibility}</p>
+                        ) : null}
+                        {p.contact ? (
+                          <p className="text-xs text-slate-500">
+                            {p.contact.startsWith("0") || p.contact.startsWith("+") ? "Puh. " : ""}
+                            {p.contact}
+                          </p>
+                        ) : null}
+                      </div>
+                      <button
+                        onClick={() => deleteOfficer(p.id)}
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        Poista
+                      </button>
+                    </li>
+                  ))}
+                  {officers.length === 0 && (
+                    <p className="text-xs text-slate-400">Ei toimihenkilöitä vielä.</p>
+                  )}
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-semibold text-slate-900">Lisää toimihenkilö</h4>
+                <form
+                  className="mt-3 space-y-3"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const fd = new FormData(e.currentTarget);
+                    await addOfficer(fd);
+                    e.currentTarget.reset();
+                  }}
+                >
+                  <input
+                    name="name"
+                    required
+                    placeholder="Nimi"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                  />
+                  <input
+                    name="responsibility"
+                    placeholder="Vastuu (esim. Satamakapteeni)"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                  />
+                  <input
+                    name="contact"
+                    placeholder="Yhteys (puh. tai email)"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                  />
+                  <input
+                    name="sort_order"
+                    type="number"
+                    placeholder="Järjestys"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                  />
+                  <button
+                    type="submit"
+                    className="w-full rounded-lg bg-sky-600 py-2 text-sm font-medium text-white hover:bg-sky-700"
+                  >
+                    Lisää
+                  </button>
+                </form>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === "harbor" && (
+          <section className="space-y-8 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">Satama-sivu</h2>
+              <p className="text-sm text-slate-500">
+                Päivitä /satama -sivun sisältö: otsikko, ingressi, kortit ja säännöt.
+              </p>
+            </div>
+            <HarborContentEditor />
+          </section>
+        )}
+      </div>
     </div>
   );
 }
 
-/* satama-editori */
+/* Satama-editori – sama kuin aiemmin */
 function HarborContentEditor() {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
@@ -631,11 +703,6 @@ function HarborContentEditor() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h3 className="text-sm font-semibold text-slate-900">Satama-sivu</h3>
-        <p className="text-sm text-slate-500">Päivitä otsikko, ingressi ja karttalinkki.</p>
-      </div>
-
       {/* perus */}
       <form
         className="grid gap-4 md:grid-cols-2"
