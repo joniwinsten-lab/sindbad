@@ -29,10 +29,8 @@ export default async function HomePage() {
     <div className="space-y-16">
       {/* HERO merellisellä taustalla */}
       <section className="relative overflow-hidden rounded-3xl ocean-bg px-6 py-16 text-white md:px-10">
-        {/* kevyt kohina päälle */}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.12)_0,rgba(255,255,255,0)_55%)] opacity-50" />
-        {/* koristepallo */}
-        <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-sky-400/20 blur-3xl" />
+        {/* kevyt tummennus että teksti erottuu */}
+        <div className="absolute inset-0 bg-slate-950/25" aria-hidden />
         <div className="mx-auto flex max-w-5xl flex-col gap-10 md:flex-row md:items-center">
           <div className="relative z-10 flex-1 space-y-6">
             <p className="text-xs uppercase tracking-[0.35em] text-sky-100/80">
@@ -69,34 +67,31 @@ export default async function HomePage() {
           </div>
 
           {/* oikean reunan kortti */}
-          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-slate-950/20 p-5 backdrop-blur md:w-80">
+          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-slate-950/70 p-5 backdrop-blur-md md:w-80">
             <h2 className="text-sm font-semibold">Satamatilanne</h2>
-            <p className="mt-1 text-xs text-sky-50/70">
+            <p className="mt-1 text-xs text-slate-100/80">
               {settings?.harbor_status
                 ? settings.harbor_status
                 : "Paikat lähes täynnä / rajoitetusti – kysy satamakapteenilta."}
             </p>
             <div className="mt-4 space-y-3">
-              <div className="rounded-lg bg-slate-950/30 px-4 py-3">
-                <p className="text-xs text-sky-50/60">Sijainti</p>
-                <p className="text-sm font-medium">Lohiapajanlahti, Lauttasaari</p>
+              <div className="rounded-lg bg-slate-950/40 px-4 py-3">
+                <p className="text-xs text-slate-100/70">Sijainti</p>
+                <p className="text-sm font-medium text-white">Lohiapajanlahti, Lauttasaari</p>
               </div>
-              <div className="rounded-lg bg-slate-950/30 px-4 py-3">
-                <p className="text-xs text-sky-50/60">Vierailijat</p>
-                <p className="text-sm font-medium">Sovi etukäteen</p>
+              <div className="rounded-lg bg-slate-950/40 px-4 py-3">
+                <p className="text-xs text-slate-100/70">Vierailijat</p>
+                <p className="text-sm font-medium text-white">Sovi etukäteen</p>
               </div>
             </div>
             <Link
               href="/satama"
-              className="mt-4 inline-flex items-center text-xs font-medium text-sky-50/80 hover:text-white"
+              className="mt-4 inline-flex items-center text-xs font-medium text-slate-100 hover:text-white"
             >
               Sataman lisätiedot →
             </Link>
           </div>
         </div>
-
-        {/* pieni aalto hero-osan alalaitaan */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-[radial-gradient(circle,rgba(6,182,212,0.35)_0,rgba(6,182,212,0)_70%)]" />
       </section>
 
       {/* PALVELUT */}
